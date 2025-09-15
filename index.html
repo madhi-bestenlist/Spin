@@ -1,0 +1,385 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Trophy, Users, RefreshCw, Download, Upload as Paste, Sparkles, Trash2, Play } from "lucide-react";
+
+// --- Utilities ---
+const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const nowIsoLocal = () => {
+  const d = new Date();
+  // Show local timestamp
+  return d.toLocaleString();
+};
+
+const gradientText =
+  "bg-clip-text text-transparent bg-[conic-gradient(at_50%_50%,#22d3ee_0%,#a78bfa_20%,#f472b6_40%,#f59e0b_60%,#34d399_80%,#22d3ee_100%)] animate-[spin_6s_linear_infinite]";
+
+// Simple confetti using emojis so we don't rely on extra libs
+function Confetti({ fire }) {
+  const [bits, setBits] = useState([]);
+  useEffect(() => {
+    if (!fire) return;
+    const emojis = ["🎉", "✨", "🎊", "💫", "⭐", "🟡", "🟣", "🟢"]; 
+    const items = Array.from({ length: 80 }).map((_, i) => ({
+      id: i + "-" + Math.random().toString(36).slice(2),
+      x: Math.random() * 100,
+      d: 4 + Math.random() * 4,
+      emoji: emojis[Math.floor(Math.random() * emojis.length)],
+      delay: Math.random() * 0.2,
+    }));
+    setBits(items);
+    const t = setTimeout(() => setBits([]), 2200);
+    return () => clearTimeout(t);
+  }, [fire]);
+
+  return (
+    <div className="pointer-events-none fixed inset-0 overflow-hidden">
+      <AnimatePresence>
+        {bits.map((b) => (
+          <motion.div
+            key={b.id}
+            initial={{ y: -40, x: `${b.x}vw`, rotate: 0, opacity: 0 }}
+            animate={{ y: "100vh", rotate: 360, opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: b.d, delay: b.delay, ease: "easeOut" }}
+            className="text-2xl select-none"
+          >
+            {b.emoji}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// --- Main App ---
+export default function App() {
+  const [count, setCount] = useState(() => {
+    const saved = Number(localStorage.getItem("ld-count") || 5);
+    return clamp(saved, 1, 20);
+  });
+
+  const [names, setNames] = useState(() => {
+    const saved = localStorage.getItem("ld-names");
+    if (saved) return JSON.parse(saved);
+    return Array.from({ length: 20 }, (_, i) => (i < 5 ? `Player ${i + 1}` : ""));
+  });
+
+  const [spinning, setSpinning] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [winners, setWinners] = useState(() => {
+    const saved = localStorage.getItem("ld-winners");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [fireConfetti, setFireConfetti] = useState(false);
+
+  const inputRefs = useRef([]);
+  const spinTimer = useRef(null);
+  const cycleTimer = useRef(null);
+
+  // Derived active list (non-empty, trimmed)
+  const activeNames = useMemo(() => {
+    const trimmed = names.slice(0, count).map((n) => n.trim()).filter(Boolean);
+    // Remove already-winners from pool
+    const already = new Set(winners.map((w) => w.name));
+    return trimmed.filter((n) => !already.has(n));
+  }, [names, count, winners]);
+
+  useEffect(() => {
+    localStorage.setItem("ld-names", JSON.stringify(names));
+  }, [names]);
+
+  useEffect(() => {
+    localStorage.setItem("ld-count", String(count));
+  }, [count]);
+
+  useEffect(() => {
+    localStorage.setItem("ld-winners", JSON.stringify(winners));
+  }, [winners]);
+
+  const handleNameChange = (idx, value) => {
+    setNames((prev) => {
+      const next = [...prev];
+      next[idx] = value;
+      return next;
+    });
+  };
+
+  const bulkPaste = () => {
+    const text = prompt(
+      "Paste names (one per line). We'll fill from the top and ignore extras beyond the selected count:"
+    );
+    if (!text) return;
+    const lines = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(0, 20);
+    setNames((prev) => {
+      const next = [...prev];
+      for (let i = 0; i < Math.min(lines.length, 20); i++) next[i] = lines[i];
+      return next;
+    });
+  };
+
+  const resetAll = () => {
+    setWinners([]);
+    setCurrent("");
+    setSpinning(false);
+  };
+
+  // Hard reset: clear everything so you can start from scratch
+  const hardReset = () => {
+    setNames(Array.from({ length: 20 }, () => ""));
+    setCount(1);
+    setWinners([]);
+    setCurrent("");
+    setSpinning(false);
+    // Clear local storage keys
+    localStorage.removeItem("ld-names");
+    localStorage.removeItem("ld-count");
+    localStorage.removeItem("ld-winners");
+  };
+
+  const spin = () => {
+    if (spinning) return;
+    if (winners.length >= 3) {
+      alert("Already picked 3 winners. Reset or clear winners to spin again.");
+      return;
+    }
+    if (activeNames.length === 0) {
+      alert("Please enter names (not already winners) to spin.");
+      return;
+    }
+
+    setSpinning(true);
+    // Cycle visually through all names quickly to simulate a roulette
+    let i = 0;
+    cycleTimer.current = setInterval(() => {
+      setCurrent(activeNames[i % activeNames.length]);
+      i++;
+    }, 60);
+
+    const duration = 2200 + Math.random() * 1800; // 2.2s - 4s
+    spinTimer.current = setTimeout(() => {
+      clearInterval(cycleTimer.current);
+      cycleTimer.current = null;
+      // Choose a random winner from the remaining pool
+      const winner = activeNames[Math.floor(Math.random() * activeNames.length)];
+      const place = winners.length + 1; // 1..3
+      setCurrent(winner);
+      setWinners((w) => [
+        ...w,
+        { rank: place, name: winner, at: nowIsoLocal() },
+      ]);
+      // Fun!
+      setFireConfetti(true);
+      setTimeout(() => setFireConfetti(false), 400);
+      setSpinning(false);
+    }, duration);
+  };
+
+  useEffect(() => () => {
+    if (cycleTimer.current) clearInterval(cycleTimer.current);
+    if (spinTimer.current) clearTimeout(spinTimer.current);
+  }, []);
+
+  const clearWinners = () => setWinners([]);
+
+  const exportWinners = () => {
+    const blob = new Blob([JSON.stringify({ winners }, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `winners-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="min-h-screen w-full bg-[radial-gradient(1200px_600px_at_top,#0ea5e9_0%,#0a0a0a_35%)] text-slate-100">
+      <Confetti fire={fireConfetti} />
+
+      <header className="max-w-6xl mx-auto px-6 pt-10 pb-6">
+        <div className="flex items-center gap-3">
+          <Sparkles className="size-6 text-cyan-300" />
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+            Lucky Draw <span className={gradientText}>Spinner</span>
+          </h1>
+        </div>
+        <p className="mt-2 text-slate-300 max-w-2xl">
+          Select up to 20 participants, paste names, and spin to pick Winner 1, 2, and 3. No repeats. Winners are saved locally with timestamps.
+        </p>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-6 pb-16 grid lg:grid-cols-2 gap-8 items-start">
+        {/* Left: Controls */}
+        <section className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-6 shadow-2xl shadow-cyan-900/20">
+          <div className="flex items-center gap-3 mb-4">
+            <Users className="size-5 text-cyan-300" />
+            <h2 className="text-xl font-semibold">Participants</h2>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4 items-end">
+            <label className="flex flex-col gap-2">
+              <span className="text-sm text-slate-300">How many?</span>
+              <select
+                value={count}
+                onChange={(e) => setCount(clamp(Number(e.target.value), 1, 20))}
+                className="rounded-xl bg-slate-900/70 border border-white/10 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              >
+                {Array.from({ length: 20 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {i + 1}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="flex gap-2">
+              <button
+                onClick={hardReset}
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-white/10 hover:bg-white/15 border border-white/10 transition"
+                title="Clear all names and settings"
+              >
+                <Trash2 className="size-4" /> Clear all
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[24rem] overflow-auto pr-1">
+            {Array.from({ length: count }).map((_, i) => (
+              <label key={i} className="text-sm">
+                <span className="text-slate-400">#{i + 1}</span>
+                <input
+                  ref={(el) => (inputRefs.current[i] = el)}
+                  value={names[i]}
+                  onChange={(e) => handleNameChange(i, e.target.value)}
+                  placeholder={`Name ${i + 1}`}
+                  className="mt-1 w-full rounded-xl bg-slate-900/70 border border-white/10 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-500"
+                />
+              </label>
+            ))}
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              onClick={spin}
+              disabled={spinning}
+              className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 bg-cyan-500/90 hover:bg-cyan-400 text-slate-900 font-semibold shadow-lg shadow-cyan-900/30 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Play className="size-5" /> {winners.length < 3 ? `Spin for Winner ${winners.length + 1}` : "Spin"}
+            </button>
+            <button
+              onClick={resetAll}
+              className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 bg-white/10 hover:bg-white/15 border border-white/10"
+            >
+              <RefreshCw className="size-5" /> Reset (keep names)
+            </button>
+            <button
+              onClick={clearWinners}
+              className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 bg-white/10 hover:bg-white/15 border border-white/10"
+            >
+              <Trash2 className="size-5" /> Clear winners
+            </button>
+            <button
+              onClick={exportWinners}
+              className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 bg-white/10 hover:bg-white/15 border border-white/10"
+            >
+              <Download className="size-5" /> Export winners
+            </button>
+          </div>
+
+          <p className="mt-3 text-xs text-slate-400">
+            Tip: Use <kbd className="px-1.5 py-0.5 bg-white/10 rounded">Paste names</kbd> to quickly fill names from a list.
+          </p>
+        </section>
+
+        {/* Right: Spinner + Winners */}
+        <section className="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-6 shadow-2xl shadow-fuchsia-900/20">
+          <div className="flex items-center gap-3 mb-4">
+            <Trophy className="size-5 text-fuchsia-300" />
+            <h2 className="text-xl font-semibold">Spin & Winners</h2>
+          </div>
+
+          {/* Spinner Display */}
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-900/60 to-black p-6 flex flex-col items-center justify-center h-64">
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-[-1px] rounded-3xl bg-gradient-to-tr from-cyan-500/20 to-fuchsia-500/20 blur-2xl" />
+            </div>
+
+            <AnimatePresence mode="popLayout">
+              <motion.div
+                key={current + String(spinning)}
+                initial={{ scale: 0.9, rotate: -3, opacity: 0 }}
+                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                exit={{ scale: 0.9, rotate: 3, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 18 }}
+                className="text-3xl sm:text-4xl font-extrabold text-center"
+              >
+                {spinning ? (
+                  <span className="inline-flex items-center gap-3">
+                    <span className="size-3 rounded-full bg-cyan-400 animate-ping" />
+                    Spinning…
+                  </span>
+                ) : current ? (
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 via-fuchsia-300 to-amber-300">
+                    {current}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">Press Spin to start</span>
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            <div className="mt-4 text-xs text-slate-400">
+              {winners.length < 3 ? (
+                <span>Next: Winner {winners.length + 1}</span>
+              ) : (
+                <span>All three winners selected</span>
+              )}
+            </div>
+          </div>
+
+          {/* Winners table */}
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+              <Trophy className="size-4 text-amber-300" /> Results
+            </h3>
+            {winners.length === 0 ? (
+              <p className="text-slate-400">No winners yet.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-white/10">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-white/5">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-semibold">Rank</th>
+                      <th className="text-left px-4 py-2 font-semibold">Name</th>
+                      <th className="text-left px-4 py-2 font-semibold">Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {winners.map((w) => (
+                      <tr key={w.rank} className="odd:bg-white/0 even:bg-white/5">
+                        <td className="px-4 py-2 font-bold">{w.rank}</td>
+                        <td className="px-4 py-2">{w.name}</td>
+                        <td className="px-4 py-2 text-slate-300">{w.at}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+
+      <footer className="max-w-6xl mx-auto px-6 pb-10 text-xs text-slate-400">
+        <p>
+          Timestamp uses your local timezone. Data is saved to your browser only (localStorage).
+        </p>
+      </footer>
+    </div>
+  );
+}
