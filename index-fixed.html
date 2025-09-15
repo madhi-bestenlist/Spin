@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lucky Draw Spinner — 1–20 Names</title>
+  <meta name="color-scheme" content="dark light" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: {} } };
+  </script>
+  <style>
+    @keyframes spinSlow { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+    .conic-bling {
+      background: conic-gradient(at 50% 50%, #22d3ee 0%, #a78bfa 20%, #f472b6 40%, #f59e0b 60%, #34d399 80%, #22d3ee 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: spinSlow 6s linear infinite;
+    }
+    .ping { position: relative; }
+    .ping::after { content: ""; position: absolute; inset: 0; border-radius: 9999px; animation: ping 1s cubic-bezier(0,0,0.2,1) infinite; border: 3px solid rgba(34,211,238,.6); }
+    @keyframes ping { 0% { transform: scale(0.8); opacity: 1; } 80%,100% { transform: scale(2); opacity: 0; } }
+  </style>
+</head>
+<body class="min-h-screen w-full bg-[radial-gradient(1200px_600px_at_top,#0ea5e9_0%,#0a0a0a_35%)] text-slate-100">
+  <div class="max-w-6xl mx-auto px-6 pt-10 pb-6">
+    <div class="flex items-center gap-3">
+      <div class="text-cyan-300 text-2xl">✨</div>
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">
+        Lucky Draw <span class="conic-bling">Spinner</span>
+      </h1>
+    </div>
+    <p class="mt-2 text-slate-300 max-w-2xl">Select up to 20 participants, paste names, and spin to pick Winner 1, 2, and 3. No repeats. Winners are saved locally with timestamps.</p>
+  </div>
+
+  <main class="max-w-6xl mx-auto px-6 pb-16 grid lg:grid-cols-2 gap-8 items-start">
+    <!-- Left: Controls -->
+    <section class="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-6 shadow-2xl shadow-cyan-900/20">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="text-cyan-300">👥</div>
+        <h2 class="text-xl font-semibold">Participants</h2>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4 items-end">
+        <label class="flex flex-col gap-2">
+          <span class="text-sm text-slate-300">How many?</span>
+          <!-- Static fallback options 1..20 so it's never empty -->
+          <select id="countSelect" class="rounded-xl bg-slate-900/70 border border-white/10 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+            <option value="16">16</option>
+            <option value="17">17</option>
+            <option value="18">18</option>
+            <option value="19">19</option>
+            <option value="20">20</option>
+          </select>
+        </label>
+
+        <div class="flex gap-2">
+          <button id="pasteBtn" class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 bg-white/10 hover:bg-white/15 border border-white/10 transition" title="Bulk paste names (one per line)">📋 Paste names</button>
+          <button id="clearAllBtn" class="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-white/10 hover:bg-white/15 border border-white/10 transition" title="Clear all names and settings">🧹 Clear all</button>
+        </div>
+      </div>
+
+      <div id="namesGrid" class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[24rem] overflow-auto pr-1"></div>
+
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button id="spinBtn" class="inline-flex items-center gap-2 rounded-2xl px-5 py-3 bg-cyan-500/90 hover:bg-cyan-400 text-slate-900 font-semibold shadow-lg shadow-cyan-900/30 disabled:opacity-60 disabled:cursor-not-allowed">▶️ Spin</button>
+        <button id="resetBtn" class="inline-flex items-center gap-2 rounded-2xl px-5 py-3 bg-white/10 hover:bg-white/15 border border-white/10">🔄 Reset (keep names)</button>
+        <button id="clearWinnersBtn" class="inline-flex items-center gap-2 rounded-2xl px-5 py-3 bg-white/10 hover:bg-white/15 border border-white/10">🗑️ Clear winners</button>
+        <button id="exportBtn" class="inline-flex items-center gap-2 rounded-2xl px-5 py-3 bg-white/10 hover:bg-white/15 border border-white/10">⬇️ Export winners</button>
+      </div>
+
+      <p class="mt-3 text-xs text-slate-400">Tip: Use <kbd class="px-1.5 py-0.5 bg-white/10 rounded">Paste names</kbd> to quickly fill names from a list.</p>
+    </section>
+
+    <!-- Right: Spinner & Winners -->
+    <section class="rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 p-6 shadow-2xl shadow-fuchsia-900/20">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="text-fuchsia-300">🏆</div>
+        <h2 class="text-xl font-semibold">Spin & Winners</h2>
+      </div>
+
+      <div class="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-900/60 to-black p-6 flex flex-col items-center justify-center h-64">
+        <div class="absolute inset-0 pointer-events-none">
+          <div class="absolute inset-[-1px] rounded-3xl bg-gradient-to-tr from-cyan-500/20 to-fuchsia-500/20 blur-2xl"></div>
+        </div>
+
+        <div id="spinText" class="text-3xl sm:text-4xl font-extrabold text-center text-slate-400">Press Spin to start</div>
+        <div id="nextText" class="mt-4 text-xs text-slate-400">Next: Winner 1</div>
+      </div>
+
+      <div class="mt-6">
+        <h3 class="text-lg font-semibold mb-3 flex items-center gap-2"><span>🏅</span> Results</h3>
+        <div id="winnersWrap" class="overflow-x-auto rounded-2xl border border-white/10 hidden">
+          <table class="min-w-full text-sm">
+            <thead class="bg-white/5">
+              <tr>
+                <th class="text-left px-4 py-2 font-semibold">Rank</th>
+                <th class="text-left px-4 py-2 font-semibold">Name</th>
+                <th class="text-left px-4 py-2 font-semibold">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="winnersBody"></tbody>
+          </table>
+        </div>
+        <p id="noWinners" class="text-slate-400">No winners yet.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="confetti" class="pointer-events-none fixed inset-0 overflow-hidden"></div>
+
+  <footer class="max-w-6xl mx-auto px-6 pb-10 text-xs text-slate-400">
+    <p>Timestamp uses your local timezone. Data is saved to your browser only (localStorage).</p>
+  </footer>
+
+  <script>
+    (function(){
+      // Ensure DOM is ready
+      document.addEventListener('DOMContentLoaded', init);
+      if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        init();
+      }
+
+      function init(){
+        const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+        const nowLocal = () => new Date().toLocaleString();
+
+        const countSelect = document.getElementById('countSelect');
+        const namesGrid = document.getElementById('namesGrid');
+        const spinBtn = document.getElementById('spinBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const clearWinnersBtn = document.getElementById('clearWinnersBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const pasteBtn = document.getElementById('pasteBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+
+        const spinText = document.getElementById('spinText');
+        const nextText = document.getElementById('nextText');
+        const winnersWrap = document.getElementById('winnersWrap');
+        const winnersBody = document.getElementById('winnersBody');
+        const noWinners = document.getElementById('noWinners');
+        const confettiEl = document.getElementById('confetti');
+
+        let count = clamp(Number(localStorage.getItem('ld-count') || 5), 1, 20);
+        let names = (() => {
+          try {
+            const saved = JSON.parse(localStorage.getItem('ld-names')||'null');
+            if (saved && Array.isArray(saved) && saved.length===20) return saved;
+          } catch {}
+          return Array.from({length:20}, (_,i)=> i<5? `Player ${i+1}` : '');
+        })();
+        let winners = (() => {
+          try { return JSON.parse(localStorage.getItem('ld-winners')||'[]'); } catch { return []; }
+        })();
+
+        let spinning = false;
+        let cycleTimer = null;
+        let spinTimer = null;
+
+        // Ensure the selected option matches storage
+        Array.from(countSelect.options).forEach(o => o.selected = (Number(o.value) === count));
+
+        function renderInputs(){
+          namesGrid.innerHTML = '';
+          for(let i=0;i<count;i++){
+            const wrap = document.createElement('label');
+            wrap.className = 'text-sm';
+            wrap.innerHTML = \`
+              <span class="text-slate-400">#\${i+1}</span>
+              <input data-idx="\${i}" value="\${names[i]||''}" placeholder="Name \${i+1}"
+                class="mt-1 w-full rounded-xl bg-slate-900/70 border border-white/10 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-500"/>\`;
+            namesGrid.appendChild(wrap);
+          }
+        }
+        function renderWinners(){
+          if (winners.length === 0){
+            winnersWrap.classList.add('hidden');
+            noWinners.classList.remove('hidden');
+          } else {
+            winnersWrap.classList.remove('hidden');
+            noWinners.classList.add('hidden');
+            winnersBody.innerHTML = '';
+            winners.forEach(w => {
+              const tr = document.createElement('tr');
+              tr.className = 'odd:bg-white/0 even:bg-white/5';
+              tr.innerHTML = \`
+                <td class="px-4 py-2 font-bold">\${w.rank}</td>
+                <td class="px-4 py-2">\${w.name}</td>
+                <td class="px-4 py-2 text-slate-300">\${w.at}</td>\`;
+              winnersBody.appendChild(tr);
+            });
+          }
+          nextText.textContent = winners.length < 3 ? \`Next: Winner \${winners.length+1}\` : 'All three winners selected';
+        }
+        function save(){
+          localStorage.setItem('ld-count', String(count));
+          localStorage.setItem('ld-names', JSON.stringify(names));
+          localStorage.setItem('ld-winners', JSON.stringify(winners));
+        }
+
+        renderInputs();
+        renderWinners();
+
+        countSelect.addEventListener('change', e => {
+          count = clamp(Number(e.target.value), 1, 20);
+          save();
+          renderInputs();
+        });
+
+        namesGrid.addEventListener('input', e => {
+          if (e.target && e.target.matches('input[data-idx]')){
+            const idx = Number(e.target.getAttribute('data-idx'));
+            names[idx] = e.target.value;
+            save();
+          }
+        });
+
+        pasteBtn.addEventListener('click', () => {
+          const text = prompt('Paste names (one per line). We will fill from the top and ignore extras beyond the selected count:');
+          if (!text) return;
+          const lines = text.split(/\\r?\\n/).map(l=>l.trim()).filter(Boolean).slice(0, 20);
+          for (let i=0;i<Math.min(lines.length,20);i++) names[i] = lines[i];
+          renderInputs();
+          save();
+        });
+
+        function activeNames(){
+          const trimmed = names.slice(0, count).map(n=>n.trim()).filter(Boolean);
+          const already = new Set(winners.map(w=>w.name));
+          return trimmed.filter(n=>!already.has(n));
+        }
+
+        function fireConfetti(){
+          const emojis = ['🎉','✨','🎊','💫','⭐','🥳','🎈','🌟'];
+          const items = Array.from({length:80}).map((_,i)=>({
+            id: i + '-' + Math.random().toString(36).slice(2),
+            x: Math.random()*100,
+            d: 4 + Math.random()*4,
+            emoji: emojis[Math.floor(Math.random()*emojis.length)],
+            delay: Math.random()*0.2
+          }));
+          confettiEl.innerHTML='';
+          items.forEach(b=>{
+            const el = document.createElement('div');
+            el.textContent = b.emoji;
+            el.style.position='fixed';
+            el.style.left = b.x + 'vw';
+            el.style.top = '-40px';
+            el.style.fontSize = '22px';
+            el.style.transition = `transform ${b.d}s ease-out ${b.delay}s, opacity ${b.d}s ease-out ${b.delay}s`;
+            confettiEl.appendChild(el);
+            requestAnimationFrame(()=>{
+              el.style.transform = 'translateY(110vh) rotate(360deg)';
+              el.style.opacity = '1';
+            });
+            setTimeout(()=>{ el.remove(); }, (b.d + b.delay)*1000 + 200);
+          });
+        }
+
+        spinBtn.addEventListener('click', () => {
+          if (spinning) return;
+          if (winners.length >= 3) { alert('Already picked 3 winners. Click Clear all to start over.'); return; }
+          const pool = activeNames();
+          if (pool.length === 0) { alert('Please enter names (not already winners) to spin.'); return; }
+
+          spinning = true;
+          spinBtn.setAttribute('disabled','true');
+          let i = 0;
+          cycleTimer = setInterval(()=>{
+            spinText.textContent = pool[i % pool.length];
+            i++;
+          }, 60);
+          spinText.classList.add('conic-bling');
+
+          const duration = 2200 + Math.random()*1800;
+          spinTimer = setTimeout(()=>{
+            clearInterval(cycleTimer); cycleTimer = null;
+            const winner = pool[Math.floor(Math.random()*pool.length)];
+            const place = winners.length + 1;
+            spinText.classList.remove('conic-bling');
+            spinText.textContent = winner;
+            winners.push({ rank: place, name: winner, at: nowLocal() });
+            save();
+            renderWinners();
+            fireConfetti();
+            spinning = false;
+            spinBtn.removeAttribute('disabled');
+          }, duration);
+        });
+
+        resetBtn.addEventListener('click', ()=>{
+          winners = [];
+          save();
+          renderWinners();
+          spinText.textContent = 'Press Spin to start';
+        });
+
+        clearWinnersBtn.addEventListener('click', ()=>{
+          winners = [];
+          save();
+          renderWinners();
+          spinText.textContent = 'Press Spin to start';
+        });
+
+        exportBtn.addEventListener('click', ()=>{
+          const blob = new Blob([JSON.stringify({ winners }, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `winners-${Date.now()}.json`; a.click();
+          URL.revokeObjectURL(url);
+        });
+
+        clearAllBtn.addEventListener('click', ()=>{
+          names = Array.from({length:20}, ()=>''); count = 1; winners = [];
+          localStorage.removeItem('ld-names');
+          localStorage.removeItem('ld-count');
+          localStorage.removeItem('ld-winners');
+          Array.from(countSelect.options).forEach(o => o.selected = (Number(o.value) === count));
+          renderInputs();
+          renderWinners();
+          spinText.textContent = 'Press Spin to start';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
