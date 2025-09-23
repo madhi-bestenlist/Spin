@@ -96,7 +96,7 @@
           <button id="spinBtn" title="Spin">SPIN</button>
         </div>
 
-        <!-- Backup button in case absolute one is hidden by a custom CSS/extension -->
+        <!-- Backup Spin Button -->
         <div style="text-align:center;margin-top:8px">
           <button id="spinBtnBackup">▶️ Spin</button>
         </div>
@@ -114,29 +114,31 @@
 
 <script>
 (function(){
+  // ===== Helpers =====
   const clamp = (n,min,max)=>Math.max(min,Math.min(max,n));
   const nowLocal = ()=> new Date().toLocaleString();
   const TWO_PI = Math.PI*2;
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
-  // Elements
+  // ===== Elements =====
   const countSelect = document.getElementById('countSelect');
   const namesGrid = document.getElementById('namesGrid');
   const wheel = document.getElementById('wheel');
   const spinBtn = document.getElementById('spinBtn');
   const spinBtnBackup = document.getElementById('spinBtnBackup');
   const winnersBody = document.getElementById('winnersBody');
-  const noWinnersRow = document.getElementById('noWinnersRow');
   const confettiEl = document.getElementById('confetti');
   const centerName = document.getElementById('centerName');
 
-  // State
+  // ===== State =====
   let count = clamp(Number(localStorage.getItem('ld-count')||8),1,20);
   let names = (()=>{ try{ const v=JSON.parse(localStorage.getItem('ld-names')||'null'); if(v&&v.length===20) return v; }catch{} return Array.from({length:20},(_,i)=> i<8?`Name ${i+1}`:'' ); })();
   let winners = (()=>{ try{ return JSON.parse(localStorage.getItem('ld-winners')||'[]'); }catch{ return []; } })();
   let spinning=false, rotation=0;
+  let sliceOrder = []; // order of labels as drawn on the wheel
   countSelect.selectedIndex = count-1;
 
-  // UI
+  // ===== UI Render =====
   function renderInputs(){
     namesGrid.innerHTML='';
     for(let i=0;i<count;i++){
@@ -144,7 +146,7 @@
       const lab = document.createElement('label'); lab.textContent='#'+(i+1);
       const inp = document.createElement('input');
       inp.placeholder='Name '+(i+1); inp.value=names[i]||'';
-      inp.oninput=()=>{ names[i]=inp.value; save(); drawWheel(); };
+      inp.oninput=()=>{ names[i]=inp.value; save(); sliceOrder=[]; drawWheel(); };
       wrap.appendChild(lab); wrap.appendChild(inp); namesGrid.appendChild(wrap);
     }
   }
@@ -167,7 +169,7 @@
     localStorage.setItem('ld-winners', JSON.stringify(winners));
   }
 
-  // Wheel
+  // ===== Wheel =====
   function activeNames(){
     const base = names.slice(0, count).map(n=>n.trim()).filter(Boolean);
     const already = new Set(winners.map(w=>w.name));
@@ -181,9 +183,13 @@
   }
   function drawWheel(){
     const list = activeNames();
-    const n = Math.max(list.length, 1);
+    // rebuild randomized order if list changed or order is empty
+    if (sliceOrder.length !== list.length || sliceOrder.some(n => !list.includes(n))) {
+      sliceOrder = shuffle(list.slice());
+    }
+    const n = Math.max(sliceOrder.length, 1);
+
     const size = Math.min(520, Math.min(window.innerWidth*0.9, window.innerHeight*0.7));
-    // ensure canvas has real pixels even if CSS sets size
     wheel.width = size * (window.devicePixelRatio || 1);
     wheel.height = size * (window.devicePixelRatio || 1);
     wheel.style.width = size+'px'; wheel.style.height = size+'px';
@@ -195,32 +201,32 @@
     const r = size/2, cx = r, cy = r;
     ctx.clearRect(0,0,size,size);
 
-    // outer base
+    // base ring
     ctx.beginPath(); ctx.arc(cx,cy,r-3,0,TWO_PI); ctx.fillStyle='#222'; ctx.fill();
 
-    // slices
+    // slices + labels
     for(let i=0;i<n;i++){
       const start = i*(TWO_PI/n), end = start + TWO_PI/n;
       ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r-10,start,end); ctx.closePath();
       ctx.fillStyle = palette[i % palette.length]; ctx.fill();
 
-      // label
+      const label = sliceOrder[i] || '—';
       ctx.save(); ctx.translate(cx,cy); ctx.rotate(start + (end-start)/2); ctx.textAlign='right';
       const maxTextWidth = r-34;
       const baseSize = Math.max(12, size/18 - (n>10? 6:0));
-      const label = list[i] || '—';
       const fs = fitText(ctx,label,maxTextWidth,baseSize);
       ctx.font = `bold ${fs}px system-ui`;
       ctx.fillStyle = '#111'; ctx.strokeStyle='rgba(0,0,0,.15)'; ctx.lineWidth=2;
       ctx.strokeText(label, r-26, 6); ctx.fillText(label, r-26, 6);
       ctx.restore();
     }
+    // inner ring
     ctx.beginPath(); ctx.arc(cx,cy, r-10, 0, TWO_PI); ctx.lineWidth=6; ctx.strokeStyle='#111'; ctx.stroke();
 
-    centerName.textContent = list.length ? 'SPIN!' : 'Add names';
+    centerName.textContent = sliceOrder.length ? 'SPIN!' : 'Add names';
   }
 
-  // Confetti
+  // ===== Confetti =====
   function confetti(){
     const emojis = ['🎉','✨','🎊','💫','⭐','🥳','🎈','🌟'];
     const items = Array.from({length:80}).map((_,i)=>({
@@ -237,17 +243,24 @@
     });
   }
 
-  // Spin
+  // ===== Spin (randomized order + jitter) =====
   function spin(){
     if(spinning) return;
     if(winners.length>=3){ alert('Already picked 3 winners. Clear winners or Clear all to spin again.'); return; }
-    const list = activeNames();
-    if(list.length===0){ alert('Enter names to spin.'); return; }
 
-    const index = Math.floor(Math.random()*list.length);
-    const n = list.length;
+    const pool = activeNames();
+    if(pool.length===0){ alert('Enter names to spin.'); return; }
+
+    // Randomize the slice order for THIS spin, and redraw the wheel to match it
+    sliceOrder = shuffle(pool.slice());
+    drawWheel();
+
+    const n = sliceOrder.length;
+    const winnerIndex = Math.floor(Math.random()*n);       // random slice
     const sliceDeg = 360/n;
-    const targetDegFromZero = index*sliceDeg + sliceDeg/2;
+    const jitter = (Math.random()-0.5) * (sliceDeg*0.6);    // random offset within slice
+    const targetDegFromZero = winnerIndex*sliceDeg + sliceDeg/2 + jitter;
+
     const extraTurns = 6*360;
     const targetRotation = rotation + extraTurns + (360 - targetDegFromZero);
 
@@ -255,7 +268,7 @@
     const dur = 3500 + Math.random()*1000;
     spinning = true; spinBtn.disabled=true; spinBtnBackup.disabled=true;
 
-    function step(t){
+    (function step(t){
       const p = Math.min(1,(t-start)/dur);
       const e = 1 - Math.pow(1-p,3); // easeOutCubic
       const current = rotation + (targetRotation-rotation)*e;
@@ -263,40 +276,44 @@
       if(p<1) requestAnimationFrame(step);
       else {
         rotation = targetRotation % 360;
-        const winner = list[index];
-        centerName.textContent = winner;
-        winners.push({ rank: winners.length+1, name: winner, at: nowLocal() });
+        const winnerName = sliceOrder[winnerIndex];
+        centerName.textContent = winnerName;
+        winners.push({ rank: winners.length+1, name: winnerName, at: nowLocal() });
         save(); renderWinners(); confetti();
         spinning=false; spinBtn.disabled=false; spinBtnBackup.disabled=false;
+        // Clear order so next spin gets fresh random layout
+        sliceOrder = [];
         drawWheel();
       }
-    }
-    requestAnimationFrame(step);
+    })(performance.now());
   }
 
-  // Events
-  countSelect.addEventListener('change', e=>{ count = clamp(Number(e.target.value),1,20); save(); renderInputs(); drawWheel(); });
+  // ===== Events =====
+  countSelect.addEventListener('change', e=>{
+    count = clamp(Number(e.target.value),1,20);
+    save(); sliceOrder=[]; renderInputs(); drawWheel();
+  });
   document.getElementById('pasteBtn').addEventListener('click', ()=>{
     const text = prompt('Paste names (one per line).'); if(!text) return;
     const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,20);
     for(let i=0;i<lines.length;i++) names[i]=lines[i];
-    save(); renderInputs(); drawWheel();
+    save(); sliceOrder=[]; renderInputs(); drawWheel();
   });
   document.getElementById('clearAllBtn').addEventListener('click', ()=>{
     names = Array.from({length:20},()=>''), winners=[], count=1, rotation=0;
     wheel.style.transform='rotate(0deg)'; countSelect.selectedIndex=0;
     localStorage.removeItem('ld-names'); localStorage.removeItem('ld-count'); localStorage.removeItem('ld-winners');
-    centerName.textContent='SPIN!'; renderInputs(); renderWinners(); drawWheel();
+    centerName.textContent='SPIN!'; sliceOrder=[]; renderInputs(); renderWinners(); drawWheel();
   });
-  document.getElementById('resetBtn').addEventListener('click', ()=>{ winners=[]; save(); renderWinners(); drawWheel(); centerName.textContent='SPIN!'; });
-  document.getElementById('clearWinnersBtn').addEventListener('click', ()=>{ winners=[]; save(); renderWinners(); drawWheel(); centerName.textContent='SPIN!'; });
+  document.getElementById('resetBtn').addEventListener('click', ()=>{ winners=[]; save(); sliceOrder=[]; renderWinners(); drawWheel(); centerName.textContent='SPIN!'; });
+  document.getElementById('clearWinnersBtn').addEventListener('click', ()=>{ winners=[]; save(); sliceOrder=[]; renderWinners(); drawWheel(); centerName.textContent='SPIN!'; });
   document.getElementById('exportBtn').addEventListener('click', ()=>{
     const blob=new Blob([JSON.stringify({ winners },null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob);
     const a=document.createElement('a'); a.href=url; a.download=`winners-${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
   });
   spinBtn.addEventListener('click', spin);
   spinBtnBackup.addEventListener('click', spin);
-  window.addEventListener('resize', drawWheel);
+  window.addEventListener('resize', ()=>{ sliceOrder=[]; drawWheel(); });
 
   // Initial render
   renderInputs(); renderWinners(); drawWheel();
