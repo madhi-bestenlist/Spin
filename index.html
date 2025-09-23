@@ -9,7 +9,6 @@
     :root { --fg:#e5e7eb; --muted:#94a3b8; --bg:#0a0a0a; --glass: rgba(255,255,255,.06); --border: rgba(255,255,255,.12); }
     *{ box-sizing: border-box; }
     body{ margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; color:var(--fg);
-      background:#0a0a0a;
       background: radial-gradient(1000px 500px at 50% -150px, #0ea5e9 0%, #0a0a0a 40%);
       min-height:100vh;
     }
@@ -30,35 +29,40 @@
     .hint{ font-size:12px; color:var(--muted); }
     .table{ width:100%; border-collapse: collapse; font-size:14px; }
     .table th,.table td{ text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); }
-    .pill{ font-weight:800; background: linear-gradient(90deg, #22d3ee, #f472b6, #f59e0b); -webkit-background-clip:text; background-clip:text; color:transparent; }
-    .toolbar{ display:flex; gap:10px; flex-wrap:wrap; }
 
     /* Wheel */
     .wheel-wrap{ position:relative; display:flex; align-items:center; justify-content:center; }
-    #wheel{ width: min(520px, 90vw); height: min(520px, 90vw); border-radius:50%; background:#111; border:6px solid #111; box-shadow: 0 0 0 6px #222 inset, 0 8px 40px rgba(0,0,0,.6); }
-    .pointer{ position:absolute; top:-4px; left:50%; transform:translateX(-50%);
-      width:0; height:0; border-left:18px solid transparent; border-right:18px solid transparent; border-bottom:26px solid #ef4444; filter: drop-shadow(0 3px 6px rgba(0,0,0,.5));}
-    .center-cap{ position:absolute; width:86px; height:86px; border-radius:50%; background: radial-gradient(circle at 30% 30%, #fff, #ddd); border:3px solid #999; display:grid; place-items:center; }
-    .spiral{ width:72px; height:72px; border-radius:50%; background: conic-gradient(from 0deg, #fff, #f87171 12.5%, #fff 25%, #60a5fa 37.5%, #fff 50%, #34d399 62.5%, #fff 75%, #fbbf24 87.5%, #fff 100%); mask: radial-gradient(circle at 50% 50%, transparent 24px, black 24px); }
-    .row{ display:flex; gap:12px; align-items:center; }
+    #wheel{ display:block; width:min(520px,90vw); height:min(520px,90vw);
+      border-radius:50%; background:#111; border:6px solid #111;
+      box-shadow: 0 0 0 6px #222 inset, 0 8px 40px rgba(0,0,0,.6);
+    }
+    .pointer{ position:absolute; z-index:6; top:-4px; left:50%; transform:translateX(-50%);
+      width:0; height:0; border-left:18px solid transparent; border-right:18px solid transparent; border-bottom:26px solid #ef4444; filter: drop-shadow(0 3px 6px rgba(0,0,0,.5));
+    }
+    #spinBtn{ position:absolute; z-index:7; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:96px; height:96px; border-radius:50%; border:3px solid #999;
+      background: radial-gradient(circle at 30% 30%, #fff, #ddd); color:#111; font-weight:900; letter-spacing:.5px;
+    }
+    .center-name{ position:absolute; z-index:8; text-align:center; width:260px; left:50%; top:50%;
+      transform: translate(-50%,-50%); font-weight:900; font-size:24px; color:#111; text-shadow: 0 1px 2px rgba(255,255,255,.7); pointer-events:none;
+    }
     .confetti{ position:fixed; inset:0; pointer-events:none; overflow:hidden; }
-    .center-name{ position:absolute; text-align:center; width:240px; left:50%; top:50%; transform: translate(-50%,-50%); font-weight:900; font-size:24px; color:#111; text-shadow: 0 1px 2px rgba(255,255,255,.6); pointer-events:none; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="row" style="gap:10px">
+    <div style="display:flex;gap:10px;align-items:center">
       <div style="font-size:24px;color:#67e8f9">✨</div>
-      <h1>Lucky Draw <span class="pill">Spinner</span></h1>
+      <h1>Lucky Draw <span style="background:linear-gradient(90deg,#22d3ee,#f472b6,#f59e0b);-webkit-background-clip:text;background-clip:text;color:transparent;">Spinner</span></h1>
     </div>
-    <p class="lead">A colorful wheel with your names on each slice. Click <b>SPIN</b>—the pin selects the winner! Winners and timestamps are listed below.</p>
+    <p class="lead">A colorful wheel with your names on each slice. Click <b>SPIN</b>—the pin selects the winner. Winners + timestamps appear below.</p>
 
     <div class="grid">
       <!-- Controls -->
       <section class="card">
-        <div class="row" style="gap:10px;margin-bottom:10px"><div>👥</div><h2>Participants</h2></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><div>👥</div><h2>Participants</h2></div>
 
-        <div class="row" style="gap:14px; flex-wrap:wrap; align-items:flex-end">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
           <div>
             <label>How many?</label>
             <select id="countSelect">
@@ -68,7 +72,7 @@
               <option>16</option><option>17</option><option>18</option><option>19</option><option>20</option>
             </select>
           </div>
-          <div class="toolbar">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button id="pasteBtn" class="btn-ghost">📋 Paste names</button>
             <button id="clearAllBtn" class="btn-ghost">🧹 Clear all</button>
             <button id="resetBtn" class="btn-ghost">🔄 Reset (keep names)</button>
@@ -83,27 +87,25 @@
 
       <!-- Wheel + winners -->
       <section class="card">
-        <div class="row" style="gap:10px;margin-bottom:10px"><div>🏆</div><h2>Spin & Winners</h2></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><div>🏆</div><h2>Spin & Winners</h2></div>
 
         <div class="wheel-wrap" style="margin-bottom:14px;">
           <div class="pointer"></div>
-          <canvas id="wheel"></canvas>
-          <div class="center-name" id="centerName">—</div>
-          <button id="spinBtn" class="center-cap" title="Spin">SPIN</button>
-          <div class="center-cap" style="z-index:-1"></div>
-          <div class="center-cap" style="width:82px;height:82px;border:none;background:transparent;display:grid;place-items:center;"><div class="spiral"></div></div>
+          <canvas id="wheel" width="520" height="520"></canvas>
+          <div class="center-name" id="centerName">SPIN!</div>
+          <button id="spinBtn" title="Spin">SPIN</button>
         </div>
 
-        <div class="hint" id="nextText">Next: Winner 1</div>
+        <!-- Backup button in case absolute one is hidden by a custom CSS/extension -->
+        <div style="text-align:center;margin-top:8px">
+          <button id="spinBtnBackup">▶️ Spin</button>
+        </div>
 
         <h3 style="margin:18px 0 8px 0;">🏅 Results</h3>
-        <div id="winnersWrap" style="display:none;">
-          <table class="table">
-            <thead><tr><th>Rank</th><th>Name</th><th>Timestamp</th></tr></thead>
-            <tbody id="winnersBody"></tbody>
-          </table>
-        </div>
-        <p id="noWinners" class="hint">No winners yet.</p>
+        <table class="table">
+          <thead><tr><th>Rank</th><th>Name</th><th>Timestamp</th></tr></thead>
+          <tbody id="winnersBody"><tr id="noWinnersRow"><td colspan="3" class="hint">No winners yet.</td></tr></tbody>
+        </table>
       </section>
     </div>
   </div>
@@ -121,10 +123,9 @@
   const namesGrid = document.getElementById('namesGrid');
   const wheel = document.getElementById('wheel');
   const spinBtn = document.getElementById('spinBtn');
-  const nextText = document.getElementById('nextText');
-  const winnersWrap = document.getElementById('winnersWrap');
+  const spinBtnBackup = document.getElementById('spinBtnBackup');
   const winnersBody = document.getElementById('winnersBody');
-  const noWinners = document.getElementById('noWinners');
+  const noWinnersRow = document.getElementById('noWinnersRow');
   const confettiEl = document.getElementById('confetti');
   const centerName = document.getElementById('centerName');
 
@@ -132,53 +133,47 @@
   let count = clamp(Number(localStorage.getItem('ld-count')||8),1,20);
   let names = (()=>{ try{ const v=JSON.parse(localStorage.getItem('ld-names')||'null'); if(v&&v.length===20) return v; }catch{} return Array.from({length:20},(_,i)=> i<8?`Name ${i+1}`:'' ); })();
   let winners = (()=>{ try{ return JSON.parse(localStorage.getItem('ld-winners')||'[]'); }catch{ return []; } })();
-  let spinning=false;
-  let rotation = 0; // degrees
-  countSelect.selectedIndex = count - 1;
+  let spinning=false, rotation=0;
+  countSelect.selectedIndex = count-1;
 
-  // Render inputs
+  // UI
   function renderInputs(){
     namesGrid.innerHTML='';
     for(let i=0;i<count;i++){
       const wrap = document.createElement('div');
-      const lab = document.createElement('label');
-      lab.textContent = '#'+(i+1);
+      const lab = document.createElement('label'); lab.textContent='#'+(i+1);
       const inp = document.createElement('input');
-      inp.placeholder = 'Name '+(i+1);
-      inp.value = names[i]||'';
-      inp.oninput = ()=>{ names[i]=inp.value; save(); drawWheel(); };
+      inp.placeholder='Name '+(i+1); inp.value=names[i]||'';
+      inp.oninput=()=>{ names[i]=inp.value; save(); drawWheel(); };
       wrap.appendChild(lab); wrap.appendChild(inp); namesGrid.appendChild(wrap);
     }
   }
-
   function renderWinners(){
     winnersBody.innerHTML='';
-    if(winners.length===0){ winnersWrap.style.display='none'; noWinners.style.display='block'; }
-    else { winnersWrap.style.display='block'; noWinners.style.display='none';
+    if(winners.length===0){
+      const tr=document.createElement('tr'); tr.innerHTML=`<td colspan="3" class="hint">No winners yet.</td>`;
+      winnersBody.appendChild(tr);
+    } else {
       winners.forEach(w=>{
         const tr=document.createElement('tr');
         tr.innerHTML = `<td><strong>${w.rank}</strong></td><td>${w.name}</td><td>${w.at}</td>`;
         winnersBody.appendChild(tr);
       });
     }
-    nextText.textContent = winners.length<3? `Next: Winner ${winners.length+1}` : 'All three winners selected';
   }
-
   function save(){
     localStorage.setItem('ld-count', String(count));
     localStorage.setItem('ld-names', JSON.stringify(names));
     localStorage.setItem('ld-winners', JSON.stringify(winners));
   }
 
-  // Wheel utilities
+  // Wheel
   function activeNames(){
     const base = names.slice(0, count).map(n=>n.trim()).filter(Boolean);
     const already = new Set(winners.map(w=>w.name));
     return base.filter(n=>!already.has(n));
   }
-  const palette = [
-    '#f87171', '#60a5fa', '#34d399', '#fbbf24', '#a78bfa', '#fb7185', '#38bdf8', '#f59e0b'
-  ];
+  const palette = ['#f87171','#60a5fa','#34d399','#fbbf24','#a78bfa','#fb7185','#38bdf8','#f59e0b'];
   function fitText(ctx, text, maxWidth, baseSize){
     let size = baseSize;
     do { ctx.font = `bold ${size--}px system-ui`; } while (ctx.measureText(text).width > maxWidth && size > 10);
@@ -188,116 +183,91 @@
     const list = activeNames();
     const n = Math.max(list.length, 1);
     const size = Math.min(520, Math.min(window.innerWidth*0.9, window.innerHeight*0.7));
-    wheel.width = size * devicePixelRatio;
-    wheel.height = size * devicePixelRatio;
+    // ensure canvas has real pixels even if CSS sets size
+    wheel.width = size * (window.devicePixelRatio || 1);
+    wheel.height = size * (window.devicePixelRatio || 1);
     wheel.style.width = size+'px'; wheel.style.height = size+'px';
+
     const ctx = wheel.getContext('2d');
-    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
-    const r = size/2;
-    const cx = r, cy = r;
+    const dpr = window.devicePixelRatio || 1;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    const r = size/2, cx = r, cy = r;
     ctx.clearRect(0,0,size,size);
 
-    // outer border
-    ctx.beginPath();
-    ctx.arc(cx,cy,r-3,0,TWO_PI);
-    ctx.fillStyle = '#222';
-    ctx.fill();
+    // outer base
+    ctx.beginPath(); ctx.arc(cx,cy,r-3,0,TWO_PI); ctx.fillStyle='#222'; ctx.fill();
 
     // slices
     for(let i=0;i<n;i++){
-      const start = i*(TWO_PI/n);
-      const end = start + TWO_PI/n;
-      ctx.beginPath();
-      ctx.moveTo(cx,cy);
-      ctx.arc(cx,cy,r-10,start,end);
-      ctx.closePath();
-      ctx.fillStyle = palette[i % palette.length];
-      ctx.fill();
-      ctx.save();
-      ctx.translate(cx,cy);
-      ctx.rotate(start + (end-start)/2);
-      ctx.textAlign='right';
+      const start = i*(TWO_PI/n), end = start + TWO_PI/n;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r-10,start,end); ctx.closePath();
+      ctx.fillStyle = palette[i % palette.length]; ctx.fill();
+
+      // label
+      ctx.save(); ctx.translate(cx,cy); ctx.rotate(start + (end-start)/2); ctx.textAlign='right';
       const maxTextWidth = r-34;
       const baseSize = Math.max(12, size/18 - (n>10? 6:0));
       const label = list[i] || '—';
       const fs = fitText(ctx,label,maxTextWidth,baseSize);
       ctx.font = `bold ${fs}px system-ui`;
-      ctx.fillStyle = '#111';
-      ctx.strokeStyle = 'rgba(0,0,0,.15)';
-      ctx.lineWidth = 2;
-      ctx.strokeText(label, r-26, 6);
-      ctx.fillText(label, r-26, 6);
+      ctx.fillStyle = '#111'; ctx.strokeStyle='rgba(0,0,0,.15)'; ctx.lineWidth=2;
+      ctx.strokeText(label, r-26, 6); ctx.fillText(label, r-26, 6);
       ctx.restore();
     }
-
-    // inner ring
-    ctx.beginPath();
-    ctx.arc(cx,cy, r-10, 0, TWO_PI);
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = '#111';
-    ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx,cy, r-10, 0, TWO_PI); ctx.lineWidth=6; ctx.strokeStyle='#111'; ctx.stroke();
 
     centerName.textContent = list.length ? 'SPIN!' : 'Add names';
   }
 
   // Confetti
-  function fireConfetti(){
+  function confetti(){
     const emojis = ['🎉','✨','🎊','💫','⭐','🥳','🎈','🌟'];
     const items = Array.from({length:80}).map((_,i)=>({
-      id: i+'-'+Math.random().toString(36).slice(2),
-      x: Math.random()*100,
-      d: 4 + Math.random()*4,
-      emoji: emojis[Math.floor(Math.random()*emojis.length)],
-      delay: Math.random()*0.2
+      x: Math.random()*100, d: 4+Math.random()*4, emoji: emojis[Math.floor(Math.random()*emojis.length)], delay: Math.random()*0.2
     }));
     confettiEl.innerHTML='';
     items.forEach(b=>{
       const el=document.createElement('div');
-      el.textContent=b.emoji;
-      el.style.position='fixed'; el.style.left=b.x+'vw'; el.style.top='-40px'; el.style.fontSize='22px';
-      el.style.transition = `transform ${b.d}s ease-out ${b.delay}s, opacity ${b.d}s ease-out ${b.delay}s`;
+      el.textContent=b.emoji; el.style.position='fixed'; el.style.left=b.x+'vw'; el.style.top='-40px'; el.style.fontSize='22px';
+      el.style.transition=`transform ${b.d}s ease-out ${b.delay}s, opacity ${b.d}s ease-out ${b.delay}s`;
       confettiEl.appendChild(el);
-      requestAnimationFrame(()=>{
-        el.style.transform='translateY(110vh) rotate(360deg)';
-        el.style.opacity='1';
-      });
+      requestAnimationFrame(()=>{ el.style.transform='translateY(110vh) rotate(360deg)'; el.style.opacity='1'; });
       setTimeout(()=>el.remove(), (b.d+b.delay)*1000+200);
     });
   }
 
-  // Spin logic
+  // Spin
   function spin(){
     if(spinning) return;
     if(winners.length>=3){ alert('Already picked 3 winners. Clear winners or Clear all to spin again.'); return; }
     const list = activeNames();
     if(list.length===0){ alert('Enter names to spin.'); return; }
+
     const index = Math.floor(Math.random()*list.length);
     const n = list.length;
     const sliceDeg = 360/n;
     const targetDegFromZero = index*sliceDeg + sliceDeg/2;
     const extraTurns = 6*360;
     const targetRotation = rotation + extraTurns + (360 - targetDegFromZero);
+
     const start = performance.now();
     const dur = 3500 + Math.random()*1000;
-    spinning = true;
-    spinBtn.disabled=true;
+    spinning = true; spinBtn.disabled=true; spinBtnBackup.disabled=true;
 
     function step(t){
-      const p = Math.min(1, (t-start)/dur);
+      const p = Math.min(1,(t-start)/dur);
       const e = 1 - Math.pow(1-p,3); // easeOutCubic
       const current = rotation + (targetRotation-rotation)*e;
       wheel.style.transform = `rotate(${current}deg)`;
       if(p<1) requestAnimationFrame(step);
       else {
         rotation = targetRotation % 360;
-        const winnerName = list[index];
-        centerName.textContent = winnerName;
-        winners.push({ rank: winners.length+1, name: winnerName, at: nowLocal() });
-        save();
-        renderWinners();
-        fireConfetti();
-        spinning=false;
-        spinBtn.disabled=false;
+        const winner = list[index];
+        centerName.textContent = winner;
+        winners.push({ rank: winners.length+1, name: winner, at: nowLocal() });
+        save(); renderWinners(); confetti();
+        spinning=false; spinBtn.disabled=false; spinBtnBackup.disabled=false;
         drawWheel();
       }
     }
@@ -305,57 +275,30 @@
   }
 
   // Events
-  countSelect.addEventListener('change', e=>{
-    count = clamp(Number(e.target.value),1,20);
-    save();
-    renderInputs();
-    drawWheel();
-  });
-
+  countSelect.addEventListener('change', e=>{ count = clamp(Number(e.target.value),1,20); save(); renderInputs(); drawWheel(); });
   document.getElementById('pasteBtn').addEventListener('click', ()=>{
-    const text = prompt('Paste names (one per line). We will fill from the top and ignore extras beyond the selected count:');
-    if(!text) return;
+    const text = prompt('Paste names (one per line).'); if(!text) return;
     const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,20);
-    for(let i=0;i<lines.length;i++){ names[i]=lines[i]; }
-    save();
-    renderInputs();
-    drawWheel();
+    for(let i=0;i<lines.length;i++) names[i]=lines[i];
+    save(); renderInputs(); drawWheel();
   });
-
   document.getElementById('clearAllBtn').addEventListener('click', ()=>{
-    names = Array.from({length:20},()=>'');
-    winners = [];
-    count = 1;
-    rotation = 0;
-    wheel.style.transform = 'rotate(0deg)';
-    countSelect.selectedIndex = 0;
-    localStorage.removeItem('ld-names');
-    localStorage.removeItem('ld-count');
-    localStorage.removeItem('ld-winners');
-    centerName.textContent='—';
-    renderInputs();
-    renderWinners();
-    drawWheel();
+    names = Array.from({length:20},()=>''), winners=[], count=1, rotation=0;
+    wheel.style.transform='rotate(0deg)'; countSelect.selectedIndex=0;
+    localStorage.removeItem('ld-names'); localStorage.removeItem('ld-count'); localStorage.removeItem('ld-winners');
+    centerName.textContent='SPIN!'; renderInputs(); renderWinners(); drawWheel();
   });
-
-  document.getElementById('resetBtn').addEventListener('click', ()=>{
-    winners = []; save(); renderWinners(); drawWheel(); centerName.textContent='SPIN!';
-  });
-
-  document.getElementById('clearWinnersBtn').addEventListener('click', ()=>{
-    winners = []; save(); renderWinners(); drawWheel(); centerName.textContent='SPIN!';
-  });
-
+  document.getElementById('resetBtn').addEventListener('click', ()=>{ winners=[]; save(); renderWinners(); drawWheel(); centerName.textContent='SPIN!'; });
+  document.getElementById('clearWinnersBtn').addEventListener('click', ()=>{ winners=[]; save(); renderWinners(); drawWheel(); centerName.textContent='SPIN!'; });
   document.getElementById('exportBtn').addEventListener('click', ()=>{
-    const blob = new Blob([JSON.stringify({ winners }, null, 2)], { type:'application/json' });
-    const url = URL.createObjectURL(blob); const a=document.createElement('a');
-    a.href=url; a.download=`winners-${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
+    const blob=new Blob([JSON.stringify({ winners },null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`winners-${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
   });
-
   spinBtn.addEventListener('click', spin);
+  spinBtnBackup.addEventListener('click', spin);
   window.addEventListener('resize', drawWheel);
 
-  // initial render
+  // Initial render
   renderInputs(); renderWinners(); drawWheel();
 })();
 </script>
